@@ -476,6 +476,10 @@ public class WaveformDemo implements ActionListener {
          * most basic window function
          * multiply the window against a sine curve, tapers ends
          * 
+         * nested loops here show a paradigm for processing multi-channel formats
+         * the interleaved samples can be processed "in place"
+         * inner loop processes individual channels using offset
+         * 
          */
         
         int slen = svalid / fmt.getChannels();
