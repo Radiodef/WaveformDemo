@@ -1,4 +1,3 @@
-
 /*
  * Original author: David Staver, 2013
  * 
