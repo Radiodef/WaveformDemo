@@ -458,7 +458,7 @@ implements ActionListener {
          * this is basically equivalent to:
          * 
          *  a = (int)Math.ceil(b / 8.0);
-         *
+         * 
          */
         
         final int normalBytes = bitsPerSample + 7 >> 3;
