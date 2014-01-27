@@ -324,15 +324,15 @@ implements ActionListener {
                 
                 try {
                     try {
-                        final AudioFileFormat fileFormat =
-                            AudioSystem.getAudioFileFormat(playerRef.getFile()
+                        final AudioFileFormat fileFormat = (
+                            AudioSystem.getAudioFileFormat(playerRef.getFile())
                         );
                         final AudioFormat audioFormat = fileFormat.getFormat();
                         
                         in = AudioSystem.getAudioInputStream(playerRef.getFile());
                         out = AudioSystem.getSourceDataLine(audioFormat);
                         
-                        int normalBytes = audioFormat.getSampleSizeInBits() + 7 >> 3;
+                        final int normalBytes = normalBytesFromBits(audioFormat.getSampleSizeInBits());
                         
                         float[] samples = new float[DEF_BUFFER_SAMPLE_SZ * audioFormat.getChannels()];
                         long[] transfer = new long[samples.length];
@@ -443,25 +443,7 @@ implements ActionListener {
         
         final int bitsPerSample = fmt.getSampleSizeInBits();
         final int bytesPerSample = bitsPerSample / 8;
-        
-        /*
-         * some formats allow for bit depths in non-multiples of 8.
-         * they will, however, typically pad so the samples are stored
-         * that way. AIFF is one of these formats.
-         * 
-         * so the expression:
-         * 
-         *  a = b + 7 >> 3;
-         * 
-         * computes a division of 8 rounding up.
-         * 
-         * this is basically equivalent to:
-         * 
-         *  a = (int)Math.ceil(b / 8.0);
-         * 
-         */
-        
-        final int normalBytes = bitsPerSample + 7 >> 3;
+        final int normalBytes = normalBytesFromBits(bitsPerSample);
         
         /*
          * not the most DRY way to do this but it's a bit more efficient.
@@ -604,6 +586,28 @@ implements ActionListener {
         }
         
         return samples;
+    }
+    
+    public static int normalBytesFromBits(int bitsPerSample) {
+        
+        /*
+         * some formats allow for bit depths in non-multiples of 8.
+         * they will, however, typically pad so the samples are stored
+         * that way. AIFF is one of these formats.
+         * 
+         * so the expression:
+         * 
+         *  bitsPerSample + 7 >> 3
+         * 
+         * computes a division of 8 rounding up (for positive numbers).
+         * 
+         * this is basically equivalent to:
+         * 
+         *  (int)Math.ceil(bitsPerSample / 8.0)
+         * 
+         */
+        
+        return bitsPerSample + 7 >> 3;
     }
     
     public class DisplayPanel
