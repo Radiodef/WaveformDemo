@@ -342,7 +342,7 @@ implements ActionListener {
                         out.start();
                         
                         /*
-                         * feed the output zome zero samples
+                         * feed the output some zero samples
                          * helps prevent the 'stutter' issue.
                          * 
                          */
