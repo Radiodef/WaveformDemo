@@ -451,10 +451,6 @@ implements ActionListener {
          * each combination of endianness/signedness or do it all in one
          * loop and check the format for each sample.
          * 
-         * of course this method is almost certainly going to get run 1000+
-         * times, enough for the JIT to pick up on the branches never changing
-         * but still.
-         * 
          * a helper array (transfer) allows the logic to be split up
          * but without being too repetetive.
          * 
