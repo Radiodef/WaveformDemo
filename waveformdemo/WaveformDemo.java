@@ -340,11 +340,7 @@ implements ActionListener {
                         long[] transfer = new long[samples.length];
                         byte[] bytes = new byte[samples.length * normalBytes];
                         
-                        final long sleepTime = (long)(
-                            audioFormat.getSampleRate() / DEF_BUFFER_SAMPLE_SZ / 3.0
-                        );
-                        
-                        out.open(audioFormat);
+                        out.open(audioFormat, bytes.length);
                         out.start();
                         
                         /*
@@ -372,36 +368,7 @@ implements ActionListener {
                                 
                                 playerRef.drawDisplay(samples, bread / normalBytes);
                                 
-                                long writeTime = System.currentTimeMillis();
                                 out.write(bytes, 0, bread);
-                                writeTime = System.currentTimeMillis() - writeTime;
-                                
-                                try {
-                                    /*
-                                     * SourceDataLine#write seems to only block
-                                     * to write the buffer in chunks. if you watch
-                                     * it, you'll notice it will return immediately
-                                     * most of the time, then occasionally block for
-                                     * 200ms or so to send its internal buffer.
-                                     * 
-                                     * this means this thread is a hog most of the time
-                                     * and frame rate will be poor on some systems.
-                                     * 
-                                     * so time the write and if it doesn't block
-                                     * sleep for some time. this time should be large
-                                     * enough that the EDT has a chance to do a repaint
-                                     * but small enough that audio won't be choppy.
-                                     * 
-                                     * this is a bit of a hack but seems to work OK
-                                     * on systems that are aggressive about repaint
-                                     * coalescence (I run this on OSX 10.6.8 which
-                                     * is one of them).
-                                     * 
-                                     */
-                                    if(writeTime < 1L) {
-                                        Thread.sleep(sleepTime);
-                                    }
-                                } catch(InterruptedException ie) {}
                             }
                             
                             if(playerRef.getStat() == PlayStat.PAUSED) {
