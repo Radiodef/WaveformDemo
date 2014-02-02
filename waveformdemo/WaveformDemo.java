@@ -381,14 +381,14 @@ implements ActionListener {
                                      * SourceDataLine#write seems to only block
                                      * to write the buffer in chunks. if you watch
                                      * it, you'll notice it will return immediately
-                                     * most of the writeTime, then occasionally block for
+                                     * most of the time, then occasionally block for
                                      * 200ms or so to send its internal buffer.
                                      * 
-                                     * this means this thread is a hog most of the writeTime
+                                     * this means this thread is a hog most of the time
                                      * and frame rate will be poor on some systems.
                                      * 
-                                     * so writeTime the write and if it doesn't block
-                                     * sleep for some writeTime. this writeTime should be large
+                                     * so time the write and if it doesn't block
+                                     * sleep for some time. this time should be large
                                      * enough that the EDT has a chance to do a repaint
                                      * but small enough that audio won't be choppy.
                                      * 
