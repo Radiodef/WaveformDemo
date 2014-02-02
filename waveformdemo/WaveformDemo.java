@@ -70,13 +70,13 @@ implements ActionListener {
         });
     }
     
-    private static final int DEF_BUFFER_SAMPLE_SZ = 1024;
+    public static final int DEF_BUFFER_SAMPLE_SZ = 1024;
     
     public static final Color LIGHT_BLUE = new Color(128, 192, 255);
     public static final Color DARK_BLUE = new Color(0, 0, 127);
     
     public enum PlayStat {
-        NOFILE, PLAYING, PAUSED, STOPPED
+        NO_FILE, PLAYING, PAUSED, STOPPED
     }
     
     public interface PlayerRef {
@@ -103,7 +103,7 @@ implements ActionListener {
     
     private final Object statLock = new Object();
     
-    private volatile PlayStat playStat = PlayStat.NOFILE;
+    private volatile PlayStat playStat = PlayStat.NO_FILE;
     
     private final PlayerRef thisPlayer = new PlayerRef() {
         @Override
@@ -154,10 +154,10 @@ implements ActionListener {
         playbackTools.add(bPause);
         playbackTools.add(bStop);
         
-        bOpen.addActionListener(WaveformDemo.this);
-        bPlay.addActionListener(WaveformDemo.this);
-        bPause.addActionListener(WaveformDemo.this);
-        bStop.addActionListener(WaveformDemo.this);
+        bOpen.addActionListener(this);
+        bPlay.addActionListener(this);
+        bPause.addActionListener(this);
+        bStop.addActionListener(this);
         
         fileLabel.setOpaque(true);
         fileLabel.setBackground(Color.BLACK);
@@ -181,8 +181,9 @@ implements ActionListener {
     }
     
     private void systemExit() {
+        boolean wasPlaying;
         synchronized(statLock) {
-            if(playStat == PlayStat.PLAYING) {
+            if(wasPlaying = (playStat == PlayStat.PLAYING)) {
                 playStat = PlayStat.STOPPED;
             }
         }
@@ -190,14 +191,16 @@ implements ActionListener {
         mainFrame.setVisible(false);
         mainFrame.dispose();
         
-        try {
+        if(wasPlaying) {
             /* 
              * helps prevent 'tearing' sound
              * if exit happens while during playback
              * 
              */
-            Thread.sleep(250L);
-        } catch(InterruptedException ie) {}
+            try {
+                Thread.sleep(250L);
+            } catch(InterruptedException ie) {}
+        }
         
         System.exit(0);
     }
@@ -324,10 +327,9 @@ implements ActionListener {
                 
                 try {
                     try {
-                        final AudioFileFormat fileFormat = (
-                            AudioSystem.getAudioFileFormat(playerRef.getFile())
+                        final AudioFormat audioFormat = (
+                            AudioSystem.getAudioFileFormat(playerRef.getFile()).getFormat()
                         );
-                        final AudioFormat audioFormat = fileFormat.getFormat();
                         
                         in = AudioSystem.getAudioInputStream(playerRef.getFile());
                         out = AudioSystem.getSourceDataLine(audioFormat);
@@ -337,6 +339,10 @@ implements ActionListener {
                         float[] samples = new float[DEF_BUFFER_SAMPLE_SZ * audioFormat.getChannels()];
                         long[] transfer = new long[samples.length];
                         byte[] bytes = new byte[samples.length * normalBytes];
+                        
+                        final long sleepTime = (long)(
+                            audioFormat.getSampleRate() / DEF_BUFFER_SAMPLE_SZ / 3.0
+                        );
                         
                         out.open(audioFormat);
                         out.start();
@@ -366,17 +372,35 @@ implements ActionListener {
                                 
                                 playerRef.drawDisplay(samples, bread / normalBytes);
                                 
+                                long writeTime = System.currentTimeMillis();
                                 out.write(bytes, 0, bread);
-                                
-                                /*
-                                 * some OS do not share threads well.
-                                 * sleep to attemp assurance the repaint will happen.
-                                 * this is a bit of a hack.
-                                 * 
-                                 */
+                                writeTime = System.currentTimeMillis() - writeTime;
                                 
                                 try {
-                                    Thread.sleep(8L);
+                                    /*
+                                     * SourceDataLine#write seems to only block
+                                     * to write the buffer in chunks. if you watch
+                                     * it, you'll notice it will return immediately
+                                     * most of the writeTime, then occasionally block for
+                                     * 200ms or so to send its internal buffer.
+                                     * 
+                                     * this means this thread is a hog most of the writeTime
+                                     * and frame rate will be poor on some systems.
+                                     * 
+                                     * so writeTime the write and if it doesn't block
+                                     * sleep for some writeTime. this writeTime should be large
+                                     * enough that the EDT has a chance to do a repaint
+                                     * but small enough that audio won't be choppy.
+                                     * 
+                                     * this is a bit of a hack but seems to work OK
+                                     * on systems that are aggressive about repaint
+                                     * coalescence (I run this on OSX 10.6.8 which
+                                     * is one of them).
+                                     * 
+                                     */
+                                    if(writeTime < 1L) {
+                                        Thread.sleep(sleepTime);
+                                    }
                                 } catch(InterruptedException ie) {}
                             }
                             
@@ -727,9 +751,7 @@ implements ActionListener {
             super.paintComponent(g);
             
             synchronized(pathLock) {
-                g.drawImage(
-                    image, 0, 0, image.getWidth(), image.getHeight(), null
-                );
+                g.drawImage(image, 0, 0, null);
             }
         }
         
