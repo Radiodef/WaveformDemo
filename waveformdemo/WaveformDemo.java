@@ -508,7 +508,7 @@ implements ActionListener {
              * and the right shift now fills with 1's:
              * 
              *     10110000
-             *  <<  (8 - 4)
+             *  >>  (8 - 4)
              *  ===========
              *     11111011
              * 
