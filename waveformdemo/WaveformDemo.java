@@ -484,44 +484,42 @@ implements ActionListener {
              * if the samples were signed, they must be
              * extended to the 64-bit long.
              * 
-             * so first check if the sign bit was set
-             * and if so, extend it.
+             * the arithmetic right shift in Java  will fill
+             * the left bits with 1's if the MSB is set.
+             * 
+             * so sign extend by first shifting left so that
+             * if the sample is supposed to be negative,
+             * it will shift the sign bit in to the 64-bit MSB
+             * then shift back and fill with 1's.
              * 
              * as an example, imagining these were 4-bit samples originally
-             * and the destination is 8-bit, a mask can be constructed
-             * with -1 (all bits 1) and a left shift:
+             * and the destination is 8-bit, if we have a hypothetical
+             * sample -5 that ought to be negative, the left shift looks
+             * like this:
              * 
-             *     11111111
-             *  <<  (4 - 1)
+             *     00001011
+             *  <<  (8 - 4)
              *  ===========
-             *     11111000
+             *     10110000
              * 
              * (except the destination is 64-bit and the original
              * bit depth from the file could be anything.)
              * 
-             * then supposing we have a hypothetical sample -5
-             * that ought to be negative, an AND can be used to check it:
+             * and the right shift now fills with 1's:
              * 
-             *    00001011
-             *  & 11111000
-             *  ==========
-             *    00001000
-             * 
-             * and an OR can be used to extend it:
-             * 
-             *    00001011
-             *  | 11111000
-             *  ==========
-             *    11111011
+             *     10110000
+             *  <<  (8 - 4)
+             *  ===========
+             *     11111011
              * 
              */
             
-            final long signMask = -1L << bitsPerSample - 1L;
+            final long signShift = 64L - bitsPerSample;
             
             for(int i = 0; i < transfer.length; i++) {
-                if((transfer[i] & signMask) != 0L) {
-                    transfer[i] |= signMask;
-                }
+                transfer[i] = (
+                    (transfer[i] << signShift) >> signShift
+                );
             }
         } else {
             
@@ -634,8 +632,9 @@ implements ActionListener {
         }
         
         public void makePath(float[] samples, int svalid) {
-            if(audioFormat == null)
+            if(audioFormat == null) {
                 return;
+            }
             
             /* shuffle */
             
